@@ -1,4 +1,5 @@
 use super::hash::{Hashable, H256};
+use ring::digest;
 
 #[derive(Debug, Default, Clone)]
 struct MerkleTreeNode {
@@ -16,7 +17,7 @@ pub struct MerkleTree {
 
 /// Given the hash of the left and right nodes, compute the hash of the parent node.
 fn hash_children(left: &H256, right: &H256) -> H256 {
-    unimplemented!();
+    return (left + right).hash;
 }
 
 /// Duplicate the last node in `nodes` to make its length even.
