@@ -7,9 +7,7 @@ use crate::crypto::hash::H256;
 use std::collections::HashMap;
 
 pub struct Blockchain {
-    // TODO: add fields here as you need, e.g.:
-    //
-    // hash_to_block: HashMap<H256, Block>,
+    hash_to_block: HashMap<H256, Block>,
 }
 
 impl Blockchain {

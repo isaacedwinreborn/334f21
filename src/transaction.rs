@@ -1,9 +1,15 @@
 use serde::{Serialize,Deserialize};
 use ring::signature::{self, Ed25519KeyPair, Signature, KeyPair, VerificationAlgorithm, EdDSAParameters};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Transaction {
     input: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct SignedTransaction {
+    input: u32,
+    signature: Vec<u8>,
 }
 
 /// Create digital signature of a transaction

@@ -34,13 +34,15 @@ pub struct Block {
 /// - Note: a valid block must satisfy that `block.hash() <= difficulty`.
 ///   In other words, the _smaller_ the `difficulty`, the harder it actually is to mine a block!
 fn default_difficulty() -> [u8; 32] {
+    let mut difficulty = [0u8; 32];
+    difficulty[0] = 1;
+    return difficulty
     // TODO: it's up to you to determine an appropriate difficulty.
     // For example, after executing the code below, `difficulty` represents the number 256^31.
     //
     // let mut difficulty = [0u8; 32];
     // difficulty[0] = 1;
     // difficulty
-    unimplemented!()
 }
 
 impl Block {
