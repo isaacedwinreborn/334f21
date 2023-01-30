@@ -9,6 +9,8 @@ use std::collections::HashMap;
 pub struct Blockchain {
     hash_to_block: HashMap<H256, Block>,
     hashvec: Vec<H256>,
+    hash_to_height: HashMap<H256, u32>,
+    tip: H256,
 }
 
 impl Blockchain {
@@ -17,9 +19,13 @@ impl Blockchain {
         let mut hash_to_block = HashMap::new();
         let key = Block::genesis().hash();
         hash_to_block.insert(key, Block::genesis());
+        let mut hash_to_height = HashMap:: new();
+        hash_to_height.insert(key, 0);
         Blockchain {
             hash_to_block: hash_to_block,
             hashvec: vec![key.clone()],
+            hash_to_height: hash_to_height,
+            tip: key,
         }
     }
 
@@ -27,9 +33,16 @@ impl Blockchain {
     pub fn insert(&mut self, block: &Block) {
         let newhash = block.hash();
         self.hash_to_block.insert(newhash, block.clone());
+        self.hashvec.push(newhash);
+        let curr_height = self.hash_to_height.get(&self.tip).unwrap();
         //get block's parent
         let parent = block.header.parent;
-        if self.tip() == parent{
+        let parent_height = self.hash_to_height.get(&parent);
+        if (parent_height.unwrap() + 1) > *curr_height {
+            self.tip = newhash;
+        }
+        self.hash_to_height.insert(newhash, parent_height.unwrap() + 1);
+        /*if self.tip() == parent{
             self.hashvec.push(newhash);
         } else{
             let mut total_length = 1;
@@ -42,6 +55,9 @@ impl Blockchain {
             println!("total length: {}", total_length);
             println!("hash vector length: {}", self.hashvec.len());
             if total_length > self.hashvec.len(){
+                self.tip() = newhash;
+            } */
+            /* if total_length > self.hashvec.len(){
                 print!("here");
                 //update hashvec
                 while total_length > self.hashvec.len(){
@@ -64,22 +80,28 @@ impl Blockchain {
                     
                 }
 
-            }
+            } */
 
-        }
 
     }
 
     /// Get the last block's hash of the longest chain
     pub fn tip(&self) -> H256 {
-        return self.hashvec.last().unwrap().clone();
+        return self.tip;
         //return self.hashvec[self.hashvec.len() -1];
     }
 
     /// Get the last block's hash of the longest chain
     #[cfg(any(test, test_utilities))]
     pub fn all_blocks_in_longest_chain(&self) -> Vec<H256> {
-        unimplemented!()
+        let mut longest_chain = Vec::new();
+        let mut curr_hash = self.tip;
+        while let Some(b) = self.hash_to_block.get(&curr_hash){
+            longest_chain.push(curr_hash);
+            let parent = b.header.parent;
+            curr_hash = parent;
+        }
+        return longest_chain;
     }
 }
 
