@@ -12,7 +12,7 @@ To prevent the above error, make sure your `Cargo.toml` is up to date ([see the 
 ## Repository management and submission
 
 1. We suggest you to continue to work on your repo of midterm project. 
-2. Submit a report in pdf on Canvas. Please don't submit code. One submission for one team is enough.
+2. Submit a report in pdf on Canvas. Please don't submit code. 
 
 ## Code provided
 The following files are related to this assignment.
