@@ -1,8 +1,15 @@
-use crate::network::server::Handle as ServerHandle;
+use crate::{network::server::Handle as ServerHandle};
 
+use std::sync::{Arc, Mutex};
+use crate::blockchain::Blockchain;
+use crate::transaction::Transaction;
+use crate::crypto::merkle::MerkleTree;
+use crate::crypto::hash::{H256, Hashable};
+use crate::block::{Block, Header, Content};
 use log::info;
 
 use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
+use ring::rand;
 use std::time;
 
 use std::thread;
@@ -23,6 +30,8 @@ pub struct Context {
     control_chan: Receiver<ControlSignal>,
     operating_state: OperatingState,
     server: ServerHandle,
+    blockchain: Arc<Mutex<Blockchain>>,
+    //mempool: Arc<Mutex<Mempool>>,
 }
 
 #[derive(Clone)]
@@ -32,7 +41,7 @@ pub struct Handle {
 }
 
 pub fn new(
-    server: &ServerHandle,
+    server: &ServerHandle, blockchain: &Arc<Mutex<Blockchain>>
 ) -> (Context, Handle) {
     let (signal_chan_sender, signal_chan_receiver) = unbounded();
 
@@ -40,6 +49,7 @@ pub fn new(
         control_chan: signal_chan_receiver,
         operating_state: OperatingState::Paused,
         server: server.clone(),
+        blockchain: Arc::clone(blockchain),
     };
 
     let handle = Handle {
@@ -87,6 +97,8 @@ impl Context {
     }
 
     fn miner_loop(&mut self) {
+        let mut nonce = 0;
+        let mut count = 0;
         // main mining loop
         loop {
             // check and react to control signals
@@ -112,6 +124,28 @@ impl Context {
             }
 
             // TODO: actual mining
+            let mut blockchain = self.blockchain.lock().unwrap();
+            //drop(blockchain); 
+
+            let transactions = vec![Default::default()];
+            let content = Content{
+                transactions: transactions,
+            };
+            let header = Header{
+                parent: blockchain.tip(),
+                nonce: nonce,
+                difficulty: blockchain.get_difficulty(),
+                timestamp: time::SystemTime::now().duration_since(time::UNIX_EPOCH).unwrap().as_millis(),
+                merkle_root: MerkleTree::new(&content.transactions).root(),
+        };
+            let block = Block{
+                    header: header,
+                    content: content};
+            if block.hash() <= header.difficulty {
+                blockchain.insert(&block);
+                count+=1;
+                print!("{} blocks mined ", count);
+            }
 
             if let OperatingState::Run(i) = self.operating_state {
                 if i != 0 {
@@ -119,6 +153,8 @@ impl Context {
                     thread::sleep(interval);
                 }
             }
+
+            nonce+=1;
         }
     }
 }

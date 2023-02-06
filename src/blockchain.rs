@@ -11,6 +11,7 @@ pub struct Blockchain {
     hashvec: Vec<H256>,
     hash_to_height: HashMap<H256, u32>,
     tip: H256,
+    difficulty: H256,
 }
 
 impl Blockchain {
@@ -26,6 +27,7 @@ impl Blockchain {
             hashvec: vec![key.clone()],
             hash_to_height: hash_to_height,
             tip: key,
+            difficulty: Block::genesis().header.difficulty,
         }
     }
 
@@ -102,6 +104,10 @@ impl Blockchain {
             curr_hash = parent;
         }
         return longest_chain;
+    }
+
+    pub fn get_difficulty(&self) -> H256 {
+        return self.difficulty;
     }
 }
 

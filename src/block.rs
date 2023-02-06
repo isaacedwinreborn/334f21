@@ -8,7 +8,7 @@ use crate::crypto::hash::{H256, Hashable};
 use crate::transaction::SignedTransaction as Transaction;
 
 /// The block header
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Header {
     pub parent: H256,
     pub nonce: u32,
