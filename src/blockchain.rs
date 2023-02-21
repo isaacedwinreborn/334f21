@@ -12,6 +12,7 @@ pub struct Blockchain {
     hash_to_height: HashMap<H256, u32>,
     tip: H256,
     difficulty: H256,
+    orphan_buffer: HashMap<H256, Vec<Block>>,
 }
 
 impl Blockchain {
@@ -22,12 +23,14 @@ impl Blockchain {
         hash_to_block.insert(key, Block::genesis());
         let mut hash_to_height = HashMap:: new();
         hash_to_height.insert(key, 0);
+        let mut orphan_hash = HashMap::new();
         Blockchain {
             hash_to_block: hash_to_block,
             hashvec: vec![key.clone()],
             hash_to_height: hash_to_height,
             tip: key,
             difficulty: Block::genesis().header.difficulty,
+            orphan_buffer: orphan_hash,
         }
     }
 
@@ -44,46 +47,8 @@ impl Blockchain {
             self.tip = newhash;
         }
         self.hash_to_height.insert(newhash, parent_height.unwrap() + 1);
-        /*if self.tip() == parent{
-            self.hashvec.push(newhash);
-        } else{
-            let mut total_length = 1;
-            let mut curr_block = parent;
-            while let Some(b) = self.hash_to_block.get(&curr_block){
-                curr_block = b.header.parent;
-                total_length += 1;
-            }
-            let mut longest_chain_length = total_length;
-            println!("total length: {}", total_length);
-            println!("hash vector length: {}", self.hashvec.len());
-            if total_length > self.hashvec.len(){
-                self.tip() = newhash;
-            } */
-            /* if total_length > self.hashvec.len(){
-                print!("here");
-                //update hashvec
-                while total_length > self.hashvec.len(){
-                    self.hashvec.pop();
-                    total_length = total_length - 1;
-                }
-                let mut movingparent = block.header.parent;
-                while longest_chain_length > self.hashvec.len(){
-                    if movingparent == self.tip(){
-                        self.hashvec.push(movingparent);
-                        self.hashvec.push(newhash);
-                        longest_chain_length +=2;
-                    }
-                    else{
-                        if let Some(d) = self.hash_to_block.get(&movingparent){
-                            movingparent = d.header.parent;
-                        }
-                    }
-
-                    
-                }
-
-            } */
-
+        let count = self.hash_to_block.len();
+        print!("{} blocks inserted in blockchain \n", count);
 
     }
 
@@ -94,7 +59,7 @@ impl Blockchain {
     }
 
     /// Get the last block's hash of the longest chain
-    #[cfg(any(test, test_utilities))]
+    //#[cfg(any(test, test_utilities))]
     pub fn all_blocks_in_longest_chain(&self) -> Vec<H256> {
         let mut longest_chain = Vec::new();
         let mut curr_hash = self.tip;
@@ -109,6 +74,35 @@ impl Blockchain {
     pub fn get_difficulty(&self) -> H256 {
         return self.difficulty;
     }
+    pub fn get_block(&self, hash: &H256) -> &Block {
+        self.hash_to_block.get(hash).unwrap()
+    }
+
+    pub fn insert_block_to_orphan_buffer(&mut self, block: &Block){
+        let key = block.header.parent;
+        if self.orphan_buffer.contains_key(&key){
+            let vec = self.orphan_buffer.get_mut(&key).unwrap();
+            vec.push(block.clone());
+        }else{
+            self.orphan_buffer.insert(key, vec![block.clone()]);
+        }
+    }
+
+    pub fn update_orphan_buffer_and_blockchain(&mut self, block: &Block){
+        let hash = block.hash();
+        if self.orphan_buffer.contains_key(&hash){
+            let removed_vec = self.orphan_buffer.remove(&hash).unwrap();
+            for block in removed_vec {
+                self.insert(&block);
+                self.update_orphan_buffer_and_blockchain(&block);
+            }
+        }
+    }
+
+    /*pub fn get_block_count(&self) -> usize{
+        return self.hash_to_block.len();
+    } */
+
 }
 
 

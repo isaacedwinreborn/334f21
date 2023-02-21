@@ -6,6 +6,7 @@ use crate::transaction::Transaction;
 use crate::crypto::merkle::MerkleTree;
 use crate::crypto::hash::{H256, Hashable};
 use crate::block::{Block, Header, Content};
+use crate::network::message::Message;
 use log::info;
 
 use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
@@ -143,8 +144,11 @@ impl Context {
                     content: content};
             if block.hash() <= header.difficulty {
                 blockchain.insert(&block);
+                self.server.broadcast(Message::NewBlockHashes(vec![block.hash()]));
+                let serialized = bincode::serialize(&block).unwrap();
+                print!("size of block is {:?} \n", serialized.len());
                 count+=1;
-                print!("{} blocks mined ", count);
+                print!("{} blocks mined \n", count);
             }
 
             if let OperatingState::Run(i) = self.operating_state {
