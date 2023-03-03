@@ -1,5 +1,4 @@
 use super::hash::{Hashable, H256};
-use ring::digest;
 
 #[derive(Debug, Default, Clone)]
 struct MerkleTreeNode {
@@ -17,14 +16,13 @@ pub struct MerkleTree {
 
 /// Given the hash of the left and right nodes, compute the hash of the parent node.
 fn hash_children(left: &H256, right: &H256) -> H256 {
-    let concat = [left.as_ref(), right.as_ref()].concat();
-    let name_hash = digest::digest(&digest::SHA256, &concat);
-    return name_hash.into();
+    let concatenated = [left.as_ref(), right.as_ref()].concat();
+    ring::digest::digest(&ring::digest::SHA256, &concatenated).into()
 }
 
 /// Duplicate the last node in `nodes` to make its length even.
 fn duplicate_last_node(nodes: &mut Vec<Option<MerkleTreeNode>>) {
-    nodes.push(nodes[nodes.len() - 1].clone());
+    nodes.push(nodes.last().unwrap().clone());
 }
 
 impl MerkleTree {
@@ -42,7 +40,7 @@ impl MerkleTree {
         while curr_level.len() > 1 {
             // Whenever a level of the tree has odd number of nodes, duplicate the last node to make the number even:
             if curr_level.len() % 2 == 1 {
-                duplicate_last_node(&mut curr_level);
+                duplicate_last_node(&mut curr_level); // TODO: implement this helper function
             }
             assert_eq!(curr_level.len() % 2, 0); // make sure we now have even number of nodes.
 
@@ -50,7 +48,7 @@ impl MerkleTree {
             for i in 0..curr_level.len() / 2 {
                 let left = curr_level[i * 2].take().unwrap();
                 let right = curr_level[i * 2 + 1].take().unwrap();
-                let hash = hash_children(&left.hash, &right.hash); 
+                let hash = hash_children(&left.hash, &right.hash); // TODO: implement this helper function
                 next_level.push(Some(MerkleTreeNode { hash: hash, left: Some(Box::new(left)), right: Some(Box::new(right)) }));
             }
             curr_level = next_level;
@@ -63,67 +61,58 @@ impl MerkleTree {
     }
 
     pub fn root(&self) -> H256 {
-        return self.root.hash;
+        self.root.hash
     }
 
     /// Returns the Merkle Proof of data at index i
     pub fn proof(&self, index: usize) -> Vec<H256> {
-
-        // want to get the starting node of the proof
-        let mut proof = Vec::new();
-        let mut current_node = &self.root;
-        let mut number_of_nodes = 1 << (self.level_count - 1);
-        let mut count = self.level_count;
-        let mut start = 0;
-        let mut end = number_of_nodes;
-
-        while count > 1 {
-            if index < (start + end) / 2 {
-                proof.push(current_node.right.as_ref().unwrap().hash);
-                current_node = current_node.left.as_ref().unwrap();
-                end = (start + end) / 2 - 1;
-            }
-            else{
-                proof.push(current_node.left.as_ref().unwrap().hash);
-                current_node = current_node.right.as_ref().unwrap();
-                start = (start + end) / 2 + 1;
-            }
-            count = count - 1;
+        let mut binary_index = Vec::new();
+        let mut index = index;
+        for _ in 0..(self.level_count - 1) {
+            binary_index.push(index % 2);
+            index /= 2;
         }
-
-        return proof;
+        let mut node = &self.root;
+        let mut proof_rev = Vec::new();
+        for bit in binary_index.iter().rev() { // we traverse from root, thus in reverse order:
+            match bit {
+                0 => { // data is on the left, sibling on the right:
+                    proof_rev.push(node.right.as_ref().unwrap().hash);
+                    node = node.left.as_ref().unwrap();
+                },
+                1 => { // data is on the right, sibling on the left:
+                    proof_rev.push(node.left.as_ref().unwrap().hash);
+                    node = node.right.as_ref().unwrap();
+                },
+                _ => unreachable!(),
+            }
+        }
+        proof_rev.into_iter().rev().collect()
     }
 }
 
 /// Verify that the datum hash with a vector of proofs will produce the Merkle root. Also need the
 /// index of datum and `leaf_size`, the total number of leaves.
 pub fn verify(root: &H256, datum: &H256, proof: &[H256], index: usize, leaf_size: usize) -> bool {
-
-    let mut proofvec = proof.to_vec();
-    proofvec.reverse();
-    let mut current = datum.clone();
-
-    let mut number = index;
-    let mut indexvector = vec![];
-    for i in 0..proof.len() {
-        indexvector.push(number % 2);
-        number = number / 2;
+    let mut binary_index = Vec::new();
+    let mut index = index;
+    for _ in 0..proof.len() {
+        binary_index.push(index % 2);
+        index /= 2;
     }
-
-
+    let mut curr_hash = *datum;
     for i in 0..proof.len() {
-        //if proof says left, we take right
-        if indexvector[i] % 2 == 0 {
-            current = hash_children(&current, &proofvec[i])
-        }
-        //if proof says right, we take left
-        else{
-            current = hash_children(&proofvec[i], &current)
-        }
+        curr_hash = match binary_index[i] {
+            0 => { // data is on the left, sibling on the right:
+                hash_children(&curr_hash, &proof[i])
+            },
+            1 => { // data is on the right, sibling on the left:
+                hash_children(&proof[i], &curr_hash)
+            },
+            _ => unreachable!(),
+        };
     }
-
-    return current == root.clone(); 
-
+    *root == curr_hash
 }
 
 #[cfg(test)]

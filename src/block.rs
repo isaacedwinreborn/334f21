@@ -1,14 +1,9 @@
-//! This module defines the layout of a block.
-//! 
-//! You do not need to modify this file, except for the `default_difficulty` function.
-//! Please read this file to understand the structure of a block.
-
 use serde::{Serialize, Deserialize};
 use crate::crypto::hash::{H256, Hashable};
 use crate::transaction::SignedTransaction as Transaction;
 
 /// The block header
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Header {
     pub parent: H256,
     pub nonce: u32,
@@ -37,12 +32,6 @@ fn default_difficulty() -> [u8; 32] {
     let mut difficulty = [0u8; 32];
     difficulty[0] = 1;
     difficulty
-    // TODO: it's up to you to determine an appropriate difficulty.
-    // For example, after executing the code below, `difficulty` represents the number 256^31.
-    //
-    // let mut difficulty = [0u8; 32];
-    // difficulty[0] = 1;
-    // difficulty
 }
 
 impl Block {
@@ -58,6 +47,11 @@ impl Block {
         };
         let content = Content { transactions };
         Block { header, content }
+    }
+
+    /// Obtain the block size in bytes
+    pub fn size(&self) -> usize {
+        bincode::serialize(&self).unwrap().len()
     }
 }
 
@@ -75,13 +69,6 @@ impl Hashable for Block {
         self.header.hash()
     }
 }
-
-impl Hashable for Transaction {
-     fn hash(&self) -> H256 {
-         let bytes = bincode::serialize(&self).unwrap();
-         ring::digest::digest(&ring::digest::SHA256, &bytes).into()
-     }
- }
 
 #[cfg(any(test, test_utilities))]
 pub mod test {
